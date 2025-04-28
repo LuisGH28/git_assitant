@@ -22,7 +22,7 @@ def print_ascii_logo():
     / __________\
    | ___________ |
    | | -     - | |
-   | |  GitGPT | |      Intelligent Commit Assistant
+   | |   Git   | |      Intelligent Commit Assistant
    | |_________| |
    \=___________=/
    / ''''''''''' \
@@ -103,7 +103,6 @@ def extract_changes(diff_text):
     return ' '.join(relevant_lines)
 
 def train_model():
-    """Entrena un modelo básico de ML para clasificación de tipos de commit."""
     X = []
     y = []
     
@@ -159,7 +158,6 @@ def get_file_type(file_path):
         return 'other'
 
 def analyze_changes(files):
-    """Analiza los cambios en los archivos para determinar el contexto."""
     changes_text = ""
     file_types = Counter()
     
@@ -173,40 +171,25 @@ def analyze_changes(files):
     
     return changes_text.strip(), predominant_type
 
-# Añade esta función para generar mensajes de commit variados
 def generate_commit_message(branch, files, changes_text, predominant_file_type, model, suggestion_index=0, previous_suggestions=None):
-    """
-    Genera diferentes mensajes de commit basados en el índice de sugerencia.
-    Cada índice corresponde a un enfoque diferente para generar el mensaje.
-    """
     if previous_suggestions is None:
         previous_suggestions = []
-    
-    # Diferentes enfoques para generar mensajes según el índice
+
     approaches = [
-        # Enfoque 0: Basado en el modelo ML (enfoque original)
         lambda: generate_ml_based_message(branch, files, changes_text, predominant_file_type, model),
-        
-        # Enfoque 1: Basado en el tipo de archivo
+
         lambda: generate_file_type_message(files, predominant_file_type),
-        
-        # Enfoque 2: Enfoque temático (basado en palabras clave menos comunes)
+
         lambda: generate_thematic_message(changes_text, files),
-        
-        # Enfoque 3: Enfoque descriptivo detallado
+
         lambda: generate_descriptive_message(changes_text, files, predominant_file_type),
-        
-        # Enfoque 4: Enfoque orientado a la acción
+
         lambda: generate_action_message(changes_text, files)
     ]
-    
-    # Asegurarse de que el índice esté dentro del rango de enfoques disponibles
+
     actual_index = suggestion_index % len(approaches)
-    
-    # Generar mensaje utilizando el enfoque correspondiente
     message = approaches[actual_index]()
-    
-    # Si el mensaje ya ha sido sugerido, intentar con otro enfoque
+
     if message in previous_suggestions and len(previous_suggestions) < len(approaches):
         return generate_commit_message(branch, files, changes_text, predominant_file_type, 
                                       model, suggestion_index + 1, previous_suggestions)
@@ -214,7 +197,6 @@ def generate_commit_message(branch, files, changes_text, predominant_file_type, 
     return message
 
 def generate_ml_based_message(branch, files, changes_text, predominant_file_type, model):
-    """Genera un mensaje basado en el modelo de ML (enfoque original)"""
     if len(changes_text) < 10:
         branch_lower = branch.lower()
         commit_type = 'chore'
@@ -250,7 +232,6 @@ def generate_ml_based_message(branch, files, changes_text, predominant_file_type
             return f"{predicted_type}: actualización de {filename}"
 
 def generate_file_type_message(files, predominant_file_type):
-    """Genera un mensaje basado en el tipo de archivo"""
     type_to_commit = {
         'code': 'feat',
         'docs': 'docs',
@@ -261,8 +242,7 @@ def generate_file_type_message(files, predominant_file_type):
     }
     
     commit_type = type_to_commit.get(predominant_file_type, 'chore')
-    
-    # Obtener información sobre los archivos
+
     num_files = len(files)
     file_extensions = [os.path.splitext(f)[1] for f in files if os.path.splitext(f)[1]]
     most_common_ext = Counter(file_extensions).most_common(1)[0][0] if file_extensions else ""
@@ -276,22 +256,18 @@ def generate_file_type_message(files, predominant_file_type):
             return f"{commit_type}: actualización de múltiples archivos ({num_files})"
 
 def generate_thematic_message(changes_text, files):
-    """Genera un mensaje basado en palabras clave menos comunes"""
     words = re.findall(r'\b\w+\b', changes_text.lower())
-    
-    # Filtrar palabras comunes
+
     common_stop_words = ['the', 'a', 'an', 'in', 'to', 'of', 'and', 'or', 'for', 'with', 'on', 'at']
     filtered_words = [w for w in words if w not in common_stop_words and len(w) > 3]
     
     if filtered_words:
-        # Tomar palabras del medio de la lista para variar
         word_count = Counter(filtered_words)
         mid_common_words = [w[0] for w in word_count.most_common()[len(word_count)//3:2*len(word_count)//3]]
         
         if mid_common_words:
             keywords = ' con '.join(random.sample(mid_common_words, min(2, len(mid_common_words))))
-            
-            # Determinar tipo de commit basado en las palabras
+
             commit_type = 'chore'
             for type_, keywords_list in TYPES.items():
                 if any(kw in filtered_words for kw in keywords_list):
@@ -299,14 +275,11 @@ def generate_thematic_message(changes_text, files):
                     break
                     
             return f"{commit_type}: {keywords} en {os.path.basename(files[0]) if files else 'proyecto'}"
-    
-    # Fallback si no hay suficientes palabras
+
     commit_type = random.choice(['feat', 'refactor', 'chore'])
     return f"{commit_type}: mejoras en {os.path.basename(files[0]) if files else 'proyecto'}"
 
 def generate_descriptive_message(changes_text, files, predominant_file_type):
-    """Genera un mensaje más descriptivo"""
-    # Determinar el tipo de cambio basado en keywords más específicos
     action_words = {
         'add': ['agregar', 'añadir', 'crear', 'implementar', 'nuevo'],
         'fix': ['arreglar', 'corregir', 'solucionar', 'reparar'],
@@ -322,8 +295,7 @@ def generate_descriptive_message(changes_text, files, predominant_file_type):
         if any(kw in words for kw in keywords):
             action = act
             break
-    
-    # Mapear acciones a tipos de commit
+
     action_to_type = {
         'add': 'feat',
         'fix': 'fix',
@@ -333,8 +305,7 @@ def generate_descriptive_message(changes_text, files, predominant_file_type):
     }
     
     commit_type = action_to_type.get(action, 'chore')
-    
-    # Añadir más contexto basado en el tipo de archivo
+
     file_type_context = {
         'code': 'funcionalidad',
         'docs': 'documentación',
@@ -348,41 +319,33 @@ def generate_descriptive_message(changes_text, files, predominant_file_type):
     return f"{commit_type}: {action} {context} en {os.path.basename(files[0]) if files else 'proyecto'}"
 
 def generate_action_message(changes_text, files):
-    """Genera un mensaje orientado a la acción"""
     verbs = ['actualiza', 'mejora', 'modifica', 'optimiza', 'implementa', 'refactoriza']
     verb = random.choice(verbs)
     
-    # Obtener componente de los archivos
     components = []
     for file in files:
         parts = file.split('/')
         if len(parts) > 1:
-            components.append(parts[-2])  # Usar el directorio padre como componente
+            components.append(parts[-2])
     
     most_common_component = Counter(components).most_common(1)[0][0] if components else "componente"
-    
-    # Generar mensaje con estructura de acción
+
     return f"{verb} {most_common_component} en {os.path.basename(files[0]) if files else 'proyecto'}"
 
 def commit_suggestion(branch, files):
-    """Genera sugerencias de commit usando machine learning."""
     model = load_or_train_model()
     
     if not files:
         return "chore: general maintenance"
     
     changes_text, predominant_file_type = analyze_changes(files)
-    
-    # Lista para mantener las sugerencias ya mostradas
     previous_suggestions = []
     suggestion_index = 0
     
     while True:
-        # Generar una nueva sugerencia
-        message = generate_commit_message(branch, files, changes_text, predominant_file_type, 
+        message = generate_commit_message(branch, files, changes_text, predominant_file_type,
                                          model, suggestion_index, previous_suggestions)
         
-        # Agregar a la lista de sugerencias mostradas
         previous_suggestions.append(message)
         
         print(f"\n💡 Sugerencia de commit #{suggestion_index + 1}:\n→ {message}")
@@ -491,7 +454,6 @@ def main():
             except Exception as e: 
                 print(f"⚠️ Error en la selección: {e}")
     
-    # Obtener los archivos actualizados después de agregar
     updated_status = git_status_info()
     all_files = updated_status["staged"]
 
@@ -501,7 +463,6 @@ def main():
         print("No hay archivos para commit.")
         commit_msg = None
 
-        
     create_markdown_file(branch_name, all_files, commit_msg)
 
 
