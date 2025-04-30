@@ -40,11 +40,11 @@ pip install -r requirements.txt
 
 ## 🛠 Installation
 
-Clone the repository and copy `git_gpt.py` into the project repository you're working on:
+Clone the repository and copy `git_assistan` into the project repository you're working on:
 
 ```
-git clone https://github.com/yourusername/gitgpt.git
-cd gitgpt
+https://github.com/LuisGH28/git_assitant.git
+cd git_assitant
 ```
 
 Then run the assistant:
