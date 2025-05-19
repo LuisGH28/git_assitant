@@ -43,6 +43,26 @@ TYPES = {
 
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model.pkl')
 
+def resolve_file_path(file_path):
+    """Resuelve la ruta correcta del archivo"""
+    # Primero probar la ruta directa
+    if os.path.exists(file_path):
+        return os.path.abspath(file_path)
+    
+    # Probar con el directorio del script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    possible_path = os.path.join(script_dir, file_path)
+    if os.path.exists(possible_path):
+        return possible_path
+    
+    # Probar con solo el nombre del archivo
+    basename = os.path.basename(file_path)
+    if os.path.exists(basename):
+        return os.path.abspath(basename)
+    
+    return None
+
+
 def normalize_paths(files):
     """Normaliza las rutas de los archivos y verifica su existencia"""
     valid_files = []
@@ -88,44 +108,47 @@ def create_branch():
         return current_branch[0]
 
 def git_status_info():
-    """Versión mejorada con normalización de rutas"""
-    unstaged = run_git_command(["git", "diff", "--name-only"])
-    staged = run_git_command(["git", "diff", "--cached", "--name-only"])
-    untracked = run_git_command(["git", "ls-files", "--others", "--exclude-standard"])
+    """Obtiene el estado de git con rutas normalizadas"""
+    def get_files(command):
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            return [resolve_file_path(f) for f in result.stdout.splitlines() if f]
+        except subprocess.CalledProcessError:
+            return []
     
     return {
-        "unstaged": normalize_paths([f for f in unstaged if f]),
-        "staged": normalize_paths([f for f in staged if f]),
-        "untracked": normalize_paths([f for f in untracked if f])
+        "staged": [f for f in get_files(["git", "diff", "--cached", "--name-only"]) if f],
+        "unstaged": [f for f in get_files(["git", "diff", "--name-only"]) if f],
+        "untracked": [f for f in get_files(["git", "ls-files", "--others", "--exclude-standard"]) if f]
     }
 
 def detect_db_files():
-    """Detección robusta de archivos SQL"""
+    """Detecta archivos SQL existentes"""
     status = git_status_info()
-    all_files = status["unstaged"] + status["staged"] + status["untracked"]
-    
-    db_files = [f for f in all_files if f.lower().endswith('.sql')]
-    print("\n🔍 Archivos SQL detectados:", db_files)
-    return db_files
+    all_files = status["staged"] + status["unstaged"] + status["untracked"]
+    return [f for f in all_files if f and f.lower().endswith('.sql')]
 
-def add_info(files):
-    """Agregar archivos con manejo robusto de rutas"""
+def add_files(files):
+    """Agrega archivos a git de manera robusta"""
     if not files:
         print("No hay archivos para agregar.")
-        return
+        return 0
     
-    print("\nAgregando archivos:")
-    success_count = 0
-    
-    for file_path in normalize_paths(files):
+    success = 0
+    for file_path in files:
+        resolved_path = resolve_file_path(file_path)
+        if not resolved_path:
+            print(f"✗ No se pudo encontrar: {file_path}")
+            continue
+        
         try:
-            print(f" + {file_path}")
-            subprocess.run(["git", "add", file_path], check=True)
-            success_count += 1
-        except subprocess.CalledProcessError as e:
-            print(f" ✗ Error al agregar {file_path}: {str(e)}")
+            subprocess.run(["git", "add", resolved_path], check=True)
+            print(f"✓ Agregado: {resolved_path}")
+            success += 1
+        except subprocess.CalledProcessError:
+            print(f"✗ Error al agregar: {resolved_path}")
     
-    print(f"\nResultado: {success_count}/{len(files)} archivos agregados exitosamente")
+    return success
 
 
 def add_sql_files():
@@ -386,6 +409,70 @@ def generate_descriptive_message(changes_text, files, predominant_file_type):
     context = file_type_context.get(predominant_file_type, 'contenido')
     return f"{commit_type}: {action} {context} en {os.path.basename(files[0]) if files else 'proyecto'}"
 
+def add_files_to_staging(files):
+    """Agrega archivos al staging area de Git con verificación de existencia"""
+    if not files:
+        print("No hay archivos para agregar.")
+        return 0
+    
+    success_count = 0
+    print("\nAgregando archivos al staging:")
+    
+    for file_path in files:
+        # Verificar existencia del archivo
+        if not os.path.exists(file_path):
+            print(f"✗ {file_path} (no existe)")
+            continue
+        
+        try:
+            # Intentar agregar el archivo
+            subprocess.run(["git", "add", file_path], check=True)
+            print(f"✓ {file_path}")
+            success_count += 1
+        except subprocess.CalledProcessError as e:
+            print(f"✗ Error al agregar {file_path}: {e}")
+    
+    print(f"\nResultado: {success_count}/{len(files)} archivos agregados exitosamente")
+    return success_count
+
+def handle_unstaged_files(unstaged_files):
+    """Maneja la selección y agregado de archivos unstaged"""
+    if not unstaged_files:
+        return 0
+    
+    print("\nArchivos unstaged disponibles:")
+    for idx, file_path in enumerate(unstaged_files):
+        print(f" [{idx}] {file_path}")
+    
+    while True:
+        selection = input(
+            "Ingresa los números (ej: 0,2,4)\n"
+            "'t' para todos\n"
+            "'n' para ninguno\n"
+            "'q' para salir\n"
+            "Opción: "
+        ).strip().lower()
+        
+        if selection == 't':
+            return add_files_to_staging(unstaged_files)
+        elif selection == 'n':
+            return 0
+        elif selection == 'q':
+            return 0
+        else:
+            try:
+                selected_indices = [int(i) for i in selection.split(',')]
+                selected_files = [
+                    unstaged_files[i] 
+                    for i in selected_indices 
+                    if 0 <= i < len(unstaged_files)
+                ]
+                if selected_files:
+                    return add_files_to_staging(selected_files)
+                print("⚠️ No se seleccionaron archivos válidos")
+            except ValueError:
+                print("⚠️ Entrada inválida. Usa números separados por comas")
+
 def generate_action_message(changes_text, files):
     verbs = ['actualiza', 'mejora', 'modifica', 'optimiza', 'implementa', 'refactoriza']
     verb = random.choice(verbs)
@@ -453,47 +540,54 @@ def prompt_compatible_apps():
     return ', '.join(apps)
 
 def generate_pr_template(branch_name, all_files, commit_msg):
-    db_files = detect_db_files()
+    # Detectar archivos SQL (incluyendo los ya staged)
+    db_files = [f for f in all_files if f.lower().endswith('.sql')]
+    
+    # Obtener información adicional
     testing_notes = prompt_testing_notes()
     compatible_apps = prompt_compatible_apps()
 
-    content = f"""
-# Descripcion
+    # Construir contenido del template
+    content = f"""## Descripción
 
-Cambios relacionados con la rama: `{branch_name}`  
-`{commit_msg or 'Sin mensaje'}`
+**Rama:** `{branch_name}`  
+**Commit:** `{commit_msg or 'Sin mensaje'}`
 
-# Configuración
-----
+## Cambios en Base de Datos
+{"**Se modificaron estos archivos SQL:**\n" + "\n".join(f"- {f}" for f in db_files) if db_files else "No hay cambios en base de datos"}
+
+## Archivos Modificados
 """
     
-    if db_files:
-        content += "Se deben ejecutar los siguientes archivos SQL en orden:\n"
-        for db_file in db_files:
-            content += f"- {db_file}\n"
-    else:
-        content += "No se requieren cambios en la base de datos.\n"
+    # Agrupar archivos por tipo
+    file_types = {
+        'SQL': [f for f in all_files if f.lower().endswith('.sql')],
+        'Código': [f for f in all_files if f.lower().endswith(('.py', '.js', '.java', '.cpp', '.c', '.h', '.ts'))],
+        'Documentación': [f for f in all_files if f.lower().endswith(('.md', '.txt', '.rst'))],
+        'Otros': [f for f in all_files if not f.lower().endswith(('.sql', '.py', '.js', '.java', '.cpp', '.c', '.h', '.ts', '.md', '.txt', '.rst'))]
+    }
 
+    # Añadir archivos agrupados al contenido
+    for category, files in file_types.items():
+        if files:
+            content += f"\n### {category}\n" + "\n".join(f"- {f}" for f in files) + "\n"
+
+    # Añadir secciones adicionales
     content += f"""
-# Consideraciones para Testing
-----
+## Consideraciones para Testing
 {testing_notes}
 
-# Aplicaciones Compatibles
-----
+## Aplicaciones Compatibles
 {compatible_apps}
-
-# Archivos modificados
-----
 """
-    for file in all_files:
-        content += f"- {file}\n"
 
+    # Escribir el archivo
     with open("PR_suggest.md", "w", encoding="utf-8") as f:
         f.write(content.strip())
-
-    print("\n✅ PR_suggest.md generado correctamente.")
-
+    
+    print(f"\n✅ Archivo PR_suggest.md generado con {len(all_files)} archivos listados")
+    print(f"📌 Archivos SQL incluidos: {len(db_files)}")
+    
 def main():
     print_ascii_logo()
     
@@ -503,18 +597,22 @@ def main():
     # Paso 1: Crear rama y agregar archivos SQL primero
     branch_name = create_branch()
     
+    # Procesar archivos SQL primero
+    sql_files = detect_db_files()
+    if sql_files:
+        print("\n🔍 Archivos SQL encontrados:")
+        for sql_file in sql_files:
+            print(f" - {sql_file}")
+        
+        print("\n📦 Agregando archivos SQL...")
+        added = add_files(sql_files)
+        print(f"✅ {added}/{len(sql_files)} archivos SQL agregados")
+
+    
     # Mostrar estado actual del repositorio
     print("\n⚙️ Configurando rutas de trabajo...")
     print(f"Directorio actual: {os.getcwd()}")
     print(f"Ruta del script: {os.path.abspath(__file__)}")
-    
-    # Paso 1: Agregar archivos SQL primero
-    print("\n🔍 Buscando archivos SQL...")
-    db_files = detect_db_files()
-    if db_files:
-        print("\n📦 Agregando archivos SQL detectados:")
-        add_info(db_files)
-    # added_sql_files = add_sql_files()
     
     # Paso 2: Mostrar estado del repositorio
     status = git_status_info()
@@ -526,6 +624,8 @@ def main():
     
     # Paso 3: Manejar archivos unstaged
     if status['unstaged']:
+        handle_unstaged_files(status['unstaged'])
+        status = git_status_info()
         print("\nArchivos unstaged disponibles:")
         for idx, file in enumerate(status['unstaged']):
             display_path = file if not file.startswith("Thesis/") else file[len("Thesis/"):]
