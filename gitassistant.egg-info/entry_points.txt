@@ -1,0 +1,2 @@
+[console_scripts]
+gitassistant = git_assistant.__main__:main

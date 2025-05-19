@@ -41,7 +41,7 @@ TYPES = {
     'perf': ['performance', 'optimize', 'speed', 'efficiency', 'faster']
 }
 
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gitgpt_model.pkl')
+MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model.pkl')
 
 def run_git_command(args):
     result = subprocess.run(args, capture_output=True, text=True)
@@ -62,7 +62,11 @@ def git_status_info():
     unstaged = run_git_command(["git", "diff", "--name-only"])
     staged = run_git_command(["git", "diff", "--cached", "--name-only"])
     untracked = run_git_command(["git", "ls-files", "--others", "--exclude-standard"])
-
+    
+    unstaged = [f for f in unstaged if f]
+    staged = [f for f in staged if f]
+    untracked = [f for f in untracked if f]
+    
     return {
         "unstaged": unstaged,
         "staged": staged,
@@ -75,10 +79,28 @@ def add_info(files):
         return
     
     print("\nAgregando archivos:")
+    success_count = 0
+    
     for file in files:
-        print(" +", file)
-        run_git_command(["git", "add", file])
-    print("Archivos agregados exitosamente.")
+        if file.startswith("Thesis/"):
+            actual_path = file[len("Thesis/"):]
+        else:
+            actual_path = file
+            
+        if not os.path.exists(actual_path):
+            print(f" ✗ {file} (no existe - ruta correcta sería: {actual_path})")
+            continue
+            
+        try:
+            print(f" + {actual_path}")
+            subprocess.run(["git", "add", actual_path], check=True)
+            success_count += 1
+        except subprocess.CalledProcessError:
+            print(f" ✗ {actual_path} (error al agregar)")
+    
+    print(f"\nResultado: {success_count}/{len(files)} archivos agregados exitosamente")
+    if success_count < len(files):
+        print("💡 Consejo: Verifica que las rutas sean correctas y que los archivos tengan cambios")
 
 def get_file_content(file_path):
     try:
@@ -124,9 +146,7 @@ def train_model():
     ])
     
     pipeline.fit(X, y)
-    
     joblib.dump(pipeline, MODEL_PATH)
-    
     return pipeline
 
 def load_or_train_model():
@@ -168,7 +188,6 @@ def analyze_changes(files):
             changes_text += extract_changes(diff) + " "
     
     predominant_type = file_types.most_common(1)[0][0] if file_types else 'other'
-    
     return changes_text.strip(), predominant_type
 
 def generate_commit_message(branch, files, changes_text, predominant_file_type, model, suggestion_index=0, previous_suggestions=None):
@@ -177,13 +196,9 @@ def generate_commit_message(branch, files, changes_text, predominant_file_type, 
 
     approaches = [
         lambda: generate_ml_based_message(branch, files, changes_text, predominant_file_type, model),
-
         lambda: generate_file_type_message(files, predominant_file_type),
-
         lambda: generate_thematic_message(changes_text, files),
-
         lambda: generate_descriptive_message(changes_text, files, predominant_file_type),
-
         lambda: generate_action_message(changes_text, files)
     ]
 
@@ -242,7 +257,6 @@ def generate_file_type_message(files, predominant_file_type):
     }
     
     commit_type = type_to_commit.get(predominant_file_type, 'chore')
-
     num_files = len(files)
     file_extensions = [os.path.splitext(f)[1] for f in files if os.path.splitext(f)[1]]
     most_common_ext = Counter(file_extensions).most_common(1)[0][0] if file_extensions else ""
@@ -257,7 +271,6 @@ def generate_file_type_message(files, predominant_file_type):
 
 def generate_thematic_message(changes_text, files):
     words = re.findall(r'\b\w+\b', changes_text.lower())
-
     common_stop_words = ['the', 'a', 'an', 'in', 'to', 'of', 'and', 'or', 'for', 'with', 'on', 'at']
     filtered_words = [w for w in words if w not in common_stop_words and len(w) > 3]
     
@@ -267,7 +280,6 @@ def generate_thematic_message(changes_text, files):
         
         if mid_common_words:
             keywords = ' con '.join(random.sample(mid_common_words, min(2, len(mid_common_words))))
-
             commit_type = 'chore'
             for type_, keywords_list in TYPES.items():
                 if any(kw in filtered_words for kw in keywords_list):
@@ -290,7 +302,7 @@ def generate_descriptive_message(changes_text, files, predominant_file_type):
     
     words = re.findall(r'\b\w+\b', changes_text.lower())
     
-    action = 'update'  # Acción por defecto
+    action = 'update'
     for act, keywords in action_words.items():
         if any(kw in words for kw in keywords):
             action = act
@@ -315,7 +327,6 @@ def generate_descriptive_message(changes_text, files, predominant_file_type):
     }
     
     context = file_type_context.get(predominant_file_type, 'contenido')
-    
     return f"{commit_type}: {action} {context} en {os.path.basename(files[0]) if files else 'proyecto'}"
 
 def generate_action_message(changes_text, files):
@@ -329,7 +340,6 @@ def generate_action_message(changes_text, files):
             components.append(parts[-2])
     
     most_common_component = Counter(components).most_common(1)[0][0] if components else "componente"
-
     return f"{verb} {most_common_component} en {os.path.basename(files[0]) if files else 'proyecto'}"
 
 def commit_suggestion(branch, files):
@@ -364,7 +374,6 @@ def commit_suggestion(branch, files):
             run_git_command(["git", "commit", "-m", custom_message])
             print("✅ Commit realizado con éxito.")
             return custom_message
-
 
 def create_markdown_file(branch_name, all_files, commit_msg):
     content = f"""
@@ -418,9 +427,11 @@ def main():
     if status['unstaged']:
         print("Archivos unstaged disponibles:")
         for idx, file in enumerate(status['unstaged']):
-            print(f" [{idx}] {file}")
         
-        selection= input("Ingresa los números de los archivos que deseas agregar (ej: 0,2,4) o 't' para todos o 'n' para ninguno: ")
+            display_path = file if not file.startswith("Thesis/") else file[len("Thesis/"):]
+            print(f" [{idx}] {display_path}")
+        
+        selection = input("Ingresa los números de los archivos que deseas agregar (ej: 0,2,4) o 't' para todos o 'n' para ninguno: ")
         
         if selection.lower() == 't':
             add_info(status['unstaged'])
@@ -434,13 +445,14 @@ def main():
             except Exception as e:
                 print(f"⚠️ Error en la selección: {e}")
 
+    status = git_status_info()
 
     if status['untracked']:
         print("Archivos untracked disponibles")
         for idx, file in enumerate(status['untracked']):
             print(f" [{idx}] {file}")
             
-        selection= input("Ingresa los números de los archivos que deseas agregar (ej: 0,2,4) o 't' para todos o 'n' para ninguno: ")
+        selection = input("Ingresa los números de los archivos que deseas agregar (ej: 0,2,4) o 't' para todos o 'n' para ninguno: ")
         
         if selection.lower() == "t":
             add_info(status['untracked'])
@@ -453,18 +465,36 @@ def main():
                 add_info(selected_files)
             except Exception as e: 
                 print(f"⚠️ Error en la selección: {e}")
-    
-    updated_status = git_status_info()
-    all_files = updated_status["staged"]
+
+        # Actualizar el estado final antes de hacer commit
+    status = git_status_info()
+    all_files = status["staged"]
 
     if all_files:
+        print("\nArchivos preparados para commit:")
+        for f in all_files:
+            print(" +", f)
+            
+        # Verificación adicional
+        if not all_files:
+            print("\n⚠️ Advertencia: No se detectaron archivos staged aunque se intentó agregarlos")
+            print("Posibles causas:")
+            print("1. Los archivos ya estaban en el repositorio sin cambios")
+            print("2. Problemas con las rutas de los archivos")
+            print("3. Los archivos están siendo ignorados por .gitignore")
+            print("\nEjecuta 'git status' manualmente para ver el estado real")
+        
         commit_msg = commit_suggestion(branch_name, all_files)
     else:
-        print("No hay archivos para commit.")
+        print("\nNo hay archivos preparados para commit:")
+        print(" - Verifica que hayas agregado los archivos correctamente")
+        print(" - Usa 'git status' para ver el estado actual")
+        print(" - Revisa si los archivos tienen cambios reales para commit")
         commit_msg = None
-
+        
     create_markdown_file(branch_name, all_files, commit_msg)
-
 
 if __name__ == "__main__":
     main()
+    
+    
