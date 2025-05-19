@@ -43,6 +43,35 @@ TYPES = {
 
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model.pkl')
 
+def normalize_paths(files):
+    """Normaliza las rutas de los archivos y verifica su existencia"""
+    valid_files = []
+    for file_path in files:
+        # Manejar rutas con directorios duplicados (ai_git_assistant/ai_git_assistant/)
+        normalized_path = os.path.normpath(file_path)
+        
+        # Verificar si la ruta existe tal cual
+        if os.path.exists(normalized_path):
+            valid_files.append(normalized_path)
+            continue
+            
+        # Intentar con la ruta relativa al directorio del script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        relative_path = os.path.join(script_dir, normalized_path)
+        if os.path.exists(relative_path):
+            valid_files.append(relative_path)
+            continue
+            
+        # Intentar con solo el nombre del archivo (última parte)
+        basename = os.path.basename(normalized_path)
+        if os.path.exists(basename):
+            valid_files.append(os.path.abspath(basename))
+            continue
+            
+        print(f"⚠️ Archivo no encontrado: {file_path} (probado: {normalized_path}, {relative_path}, {basename})")
+    
+    return valid_files
+
 def run_git_command(args):
     result = subprocess.run(args, capture_output=True, text=True)
     return result.stdout.strip().splitlines()
@@ -59,21 +88,28 @@ def create_branch():
         return current_branch[0]
 
 def git_status_info():
+    """Versión mejorada con normalización de rutas"""
     unstaged = run_git_command(["git", "diff", "--name-only"])
     staged = run_git_command(["git", "diff", "--cached", "--name-only"])
     untracked = run_git_command(["git", "ls-files", "--others", "--exclude-standard"])
     
-    unstaged = [f for f in unstaged if f]
-    staged = [f for f in staged if f]
-    untracked = [f for f in untracked if f]
-    
     return {
-        "unstaged": unstaged,
-        "staged": staged,
-        "untracked": untracked
+        "unstaged": normalize_paths([f for f in unstaged if f]),
+        "staged": normalize_paths([f for f in staged if f]),
+        "untracked": normalize_paths([f for f in untracked if f])
     }
 
+def detect_db_files():
+    """Detección robusta de archivos SQL"""
+    status = git_status_info()
+    all_files = status["unstaged"] + status["staged"] + status["untracked"]
+    
+    db_files = [f for f in all_files if f.lower().endswith('.sql')]
+    print("\n🔍 Archivos SQL detectados:", db_files)
+    return db_files
+
 def add_info(files):
+    """Agregar archivos con manejo robusto de rutas"""
     if not files:
         print("No hay archivos para agregar.")
         return
@@ -81,26 +117,47 @@ def add_info(files):
     print("\nAgregando archivos:")
     success_count = 0
     
-    for file in files:
-        if file.startswith("Thesis/"):
-            actual_path = file[len("Thesis/"):]
-        else:
-            actual_path = file
-            
-        if not os.path.exists(actual_path):
-            print(f" ✗ {file} (no existe - ruta correcta sería: {actual_path})")
-            continue
-            
+    for file_path in normalize_paths(files):
         try:
-            print(f" + {actual_path}")
-            subprocess.run(["git", "add", actual_path], check=True)
+            print(f" + {file_path}")
+            subprocess.run(["git", "add", file_path], check=True)
             success_count += 1
-        except subprocess.CalledProcessError:
-            print(f" ✗ {actual_path} (error al agregar)")
+        except subprocess.CalledProcessError as e:
+            print(f" ✗ Error al agregar {file_path}: {str(e)}")
     
     print(f"\nResultado: {success_count}/{len(files)} archivos agregados exitosamente")
-    if success_count < len(files):
-        print("💡 Consejo: Verifica que las rutas sean correctas y que los archivos tengan cambios")
+
+
+def add_sql_files():
+    """Agrega archivos SQL de manera confiable"""
+    db_files = detect_db_files()
+    if not db_files:
+        print("ℹ️ No se encontraron archivos SQL para agregar")
+        return []
+    
+    print("\n📦 Procesando archivos SQL:")
+    added_files = []
+    
+    for sql_file in db_files:
+        try:
+            # Verificar existencia nuevamente por seguridad
+            if not os.path.exists(sql_file):
+                print(f" ✗ {sql_file} (no existe)")
+                continue
+                
+            print(f" + {sql_file}")
+            subprocess.run(['git', 'add', sql_file], check=True)
+            added_files.append(sql_file)
+        except subprocess.CalledProcessError as e:
+            print(f" ✗ Error al agregar {sql_file}: {str(e)}")
+    
+    # Verificación final
+    if added_files:
+        print("\n✅ Archivos SQL agregados correctamente:", added_files)
+    else:
+        print("\n⚠️ No se pudo agregar ningún archivo SQL")
+    
+    return added_files
 
 def get_file_content(file_path):
     try:
@@ -375,59 +432,102 @@ def commit_suggestion(branch, files):
             print("✅ Commit realizado con éxito.")
             return custom_message
 
-def create_markdown_file(branch_name, all_files, commit_msg):
+def prompt_testing_notes():
+    print("\n¿Deseas agregar información para la sección de 'Consideraciones para Testing'? (s/n): ", end='')
+    if input().strip().lower() == 's':
+        print("Escribe lo que desees agregar (finaliza con Enter):")
+        return input().strip()
+    return 'N/A'
+
+def prompt_compatible_apps():
+    default_apps = ['Web', 'Mobile']
+    apps = default_apps.copy()
+    print(f"\nAplicaciones compatibles actuales: {', '.join(default_apps)}")
+    print("¿Deseas agregar otra aplicación compatible? (s/n): ", end='')
+    while input().strip().lower() == 's':
+        print("Nombre de la aplicación a agregar:", end=' ')
+        new_app = input().strip()
+        if new_app:
+            apps.append(new_app)
+        print("¿Deseas agregar otra aplicación? (s/n): ", end='')
+    return ', '.join(apps)
+
+def generate_pr_template(branch_name, all_files, commit_msg):
+    db_files = detect_db_files()
+    testing_notes = prompt_testing_notes()
+    compatible_apps = prompt_compatible_apps()
+
     content = f"""
 # Descripcion
 
 Cambios relacionados con la rama: `{branch_name}`  
 `{commit_msg or 'Sin mensaje'}`
+
+# Configuración
+----
 """
-    content += """ 
+    
+    if db_files:
+        content += "Se deben ejecutar los siguientes archivos SQL en orden:\n"
+        for db_file in db_files:
+            content += f"- {db_file}\n"
+    else:
+        content += "No se requieren cambios en la base de datos.\n"
 
-# Configuracion
+    content += f"""
+# Consideraciones para Testing
+----
+{testing_notes}
 
-# Consideraciones testing
+# Aplicaciones Compatibles
+----
+{compatible_apps}
 
-# Aplicaciones compatibles
-
-| Aplicación  | Versión | 
-|-------------|---------|
-| App 1       | v7.     |
-
-# Documentos
-
+# Archivos modificados
+----
 """
-
     for file in all_files:
         content += f"- {file}\n"
 
-    content += "\n# Bugs\n"
+    with open("PR_suggest.md", "w", encoding="utf-8") as f:
+        f.write(content.strip())
 
-    with open("PR_suggest.md", "w", encoding="utf-8") as PR_suggest:
-        PR_suggest.write(content)
+    print("\n✅ PR_suggest.md generado correctamente.")
 
 def main():
     print_ascii_logo()
     
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    print(f"\n📂 Directorio de trabajo: {os.getcwd()}")
+    
+    # Paso 1: Crear rama y agregar archivos SQL primero
     branch_name = create_branch()
+    
+    # Mostrar estado actual del repositorio
+    print("\n⚙️ Configurando rutas de trabajo...")
+    print(f"Directorio actual: {os.getcwd()}")
+    print(f"Ruta del script: {os.path.abspath(__file__)}")
+    
+    # Paso 1: Agregar archivos SQL primero
+    print("\n🔍 Buscando archivos SQL...")
+    db_files = detect_db_files()
+    if db_files:
+        print("\n📦 Agregando archivos SQL detectados:")
+        add_info(db_files)
+    # added_sql_files = add_sql_files()
+    
+    # Paso 2: Mostrar estado del repositorio
     status = git_status_info()
 
-    print("🚫 Unstaged files:")
-    for f in status["unstaged"]:
-        print(" -", f)
-
-    print("\n✅ Staged files:")
-    for f in status["staged"]:
-        print(" +", f)
-
-    print("\n❓ Untracked files:")
-    for f in status["untracked"]:
-        print(" ?", f)
-        
+    print("\n📊 Estado actual del repositorio:")
+    print("Staged:", status["staged"])
+    print("Unstaged:", status["unstaged"])
+    print("Untracked:", status["untracked"])
+    
+    # Paso 3: Manejar archivos unstaged
     if status['unstaged']:
-        print("Archivos unstaged disponibles:")
+        print("\nArchivos unstaged disponibles:")
         for idx, file in enumerate(status['unstaged']):
-        
             display_path = file if not file.startswith("Thesis/") else file[len("Thesis/"):]
             print(f" [{idx}] {display_path}")
         
@@ -445,10 +545,9 @@ def main():
             except Exception as e:
                 print(f"⚠️ Error en la selección: {e}")
 
-    status = git_status_info()
-
+    # Paso 4: Manejar archivos untracked
     if status['untracked']:
-        print("Archivos untracked disponibles")
+        print("\nArchivos untracked disponibles:")
         for idx, file in enumerate(status['untracked']):
             print(f" [{idx}] {file}")
             
@@ -466,7 +565,7 @@ def main():
             except Exception as e: 
                 print(f"⚠️ Error en la selección: {e}")
 
-        # Actualizar el estado final antes de hacer commit
+    # Paso 5: Actualizar estado y preparar commit
     status = git_status_info()
     all_files = status["staged"]
 
@@ -474,27 +573,15 @@ def main():
         print("\nArchivos preparados para commit:")
         for f in all_files:
             print(" +", f)
-            
-        # Verificación adicional
-        if not all_files:
-            print("\n⚠️ Advertencia: No se detectaron archivos staged aunque se intentó agregarlos")
-            print("Posibles causas:")
-            print("1. Los archivos ya estaban en el repositorio sin cambios")
-            print("2. Problemas con las rutas de los archivos")
-            print("3. Los archivos están siendo ignorados por .gitignore")
-            print("\nEjecuta 'git status' manualmente para ver el estado real")
         
         commit_msg = commit_suggestion(branch_name, all_files)
     else:
-        print("\nNo hay archivos preparados para commit:")
-        print(" - Verifica que hayas agregado los archivos correctamente")
-        print(" - Usa 'git status' para ver el estado actual")
-        print(" - Revisa si los archivos tienen cambios reales para commit")
+        print("\nNo hay archivos preparados para commit")
         commit_msg = None
         
-    create_markdown_file(branch_name, all_files, commit_msg)
+    # Paso 6: Generar template de PR
+    generate_pr_template(branch_name, all_files, commit_msg)
+    print("\n¡Proceso completado con éxito!")
 
 if __name__ == "__main__":
     main()
-    
-    
