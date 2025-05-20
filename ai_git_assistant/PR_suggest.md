@@ -1,24 +1,31 @@
 ## Descripción
 
 **Rama:** `experiment/add_mobile`  
-**Commit:** `fix: sql y users y macbook en PR_suggest.md`
+**Commit:** `chore: datos con ai_git_assistant en PR_suggest.md`
 
 ## Configuraciones
-No hay cambios en base de datos
+**Se modificaron estos archivos SQL:**
+- /Users/macbook/Documents/gitAssistant/ai_git_assistant/aa.sql
 
 ## Archivos Modificados
+
+### SQL
+- /Users/macbook/Documents/gitAssistant/ai_git_assistant/aa.sql
+
+### Código
+- /Users/macbook/Documents/gitAssistant/ai_git_assistant/__main__.py
 
 ### Documentación
 - /Users/macbook/Documents/gitAssistant/ai_git_assistant/PR_suggest.md
 
 ### Otros
-- /Users/macbook/Documents/gitAssistant/ai_git_assistant/hello.dart
+- /Users/macbook/Documents/gitAssistant/ai_git_assistant/helloTwo.dart
 
 ## Consideraciones para Testing
-se tiene que correr x cosa
+correr primero x script para que todo funcione
 
 ## Aplicaciones Compatibles
 # Aplicaciones compatibles
 | Aplicación  | Versión |
 |-------------|---------|
-| app1        | v7.2    |
+| app1        | v3.2.1  |
