@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-git-assistant"
-version = "0.1.0"
+version = "1.0.0"
 authors = [
     {name = "Luis Gonzalez", email = "luisgnzhdz@gmail.com"},
 ]

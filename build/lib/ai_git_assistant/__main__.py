@@ -3,17 +3,12 @@
 import subprocess
 import os
 import re
-import difflib
 from collections import Counter
-import pickle
-import numpy as np
+import random
+import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
-import joblib
-import pathlib
-import random
-from datetime import datetime
 
 def print_ascii_logo():
     print(r"""
@@ -45,69 +40,73 @@ MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model.pkl
 
 def run_git_command(args):
     result = subprocess.run(args, capture_output=True, text=True)
-    return result.stdout.strip().splitlines()
+    return result.stdout.strip().splitlines() if result.stdout.strip() else []
+
+def resolve_file_path(file_path):
+    if os.path.exists(file_path):
+        return os.path.abspath(file_path)
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    possible_path = os.path.join(script_dir, file_path)
+    if os.path.exists(possible_path):
+        return possible_path
+    
+    basename = os.path.basename(file_path)
+    if os.path.exists(basename):
+        return os.path.abspath(basename)
+    
+    return None
+
+def git_status_info():
+    def get_files(command):
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            return [resolve_file_path(f) for f in result.stdout.splitlines() if f]
+        except subprocess.CalledProcessError:
+            return []
+    
+    return {
+        "staged": [f for f in get_files(["git", "diff", "--cached", "--name-only"]) if f],
+        "unstaged": [f for f in get_files(["git", "diff", "--name-only"]) if f],
+        "untracked": [f for f in get_files(["git", "ls-files", "--others", "--exclude-standard"]) if f]
+    }
 
 def create_branch():
     new_branch = input('¿Quieres crear una nueva rama? (S/s): ')
     if new_branch.lower() == 's':
         name = input('Ingresa el nombre de tu nueva rama: ')
-        result = subprocess.run(["git", "checkout", "-b", name])
+        subprocess.run(["git", "checkout", "-b", name], check=True)
         return name
     else:
         current_branch = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
         print(f'ℹ️ Continuarás trabajando en la rama actual: {current_branch[0]}')
         return current_branch[0]
 
-def git_status_info():
-    unstaged = run_git_command(["git", "diff", "--name-only"])
-    staged = run_git_command(["git", "diff", "--cached", "--name-only"])
-    untracked = run_git_command(["git", "ls-files", "--others", "--exclude-standard"])
-    
-    unstaged = [f for f in unstaged if f]
-    staged = [f for f in staged if f]
-    untracked = [f for f in untracked if f]
-    
-    return {
-        "unstaged": unstaged,
-        "staged": staged,
-        "untracked": untracked
-    }
-
-def add_info(files):
+def add_files(files):
     if not files:
         print("No hay archivos para agregar.")
-        return
+        return 0
     
-    print("\nAgregando archivos:")
-    success_count = 0
-    
-    for file in files:
-        if file.startswith("Thesis/"):
-            actual_path = file[len("Thesis/"):]
-        else:
-            actual_path = file
-            
-        if not os.path.exists(actual_path):
-            print(f" ✗ {file} (no existe - ruta correcta sería: {actual_path})")
+    success = 0
+    for file_path in files:
+        resolved_path = resolve_file_path(file_path)
+        if not resolved_path:
+            print(f"✗ No se pudo encontrar: {file_path}")
             continue
-            
+        
         try:
-            print(f" + {actual_path}")
-            subprocess.run(["git", "add", actual_path], check=True)
-            success_count += 1
+            subprocess.run(["git", "add", resolved_path], check=True)
+            print(f"✓ Agregado: {resolved_path}")
+            success += 1
         except subprocess.CalledProcessError:
-            print(f" ✗ {actual_path} (error al agregar)")
+            print(f"✗ Error al agregar: {resolved_path}")
     
-    print(f"\nResultado: {success_count}/{len(files)} archivos agregados exitosamente")
-    if success_count < len(files):
-        print("💡 Consejo: Verifica que las rutas sean correctas y que los archivos tengan cambios")
+    return success
 
-def get_file_content(file_path):
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return f.read()
-    except:
-        return ""
+def detect_files_by_extension(extension):
+    status = git_status_info()
+    all_files = status["staged"] + status["unstaged"] + status["untracked"]
+    return [f for f in all_files if f and f.lower().endswith(extension)]
 
 def get_file_diff(file_path):
     try:
@@ -190,10 +189,7 @@ def analyze_changes(files):
     predominant_type = file_types.most_common(1)[0][0] if file_types else 'other'
     return changes_text.strip(), predominant_type
 
-def generate_commit_message(branch, files, changes_text, predominant_file_type, model, suggestion_index=0, previous_suggestions=None):
-    if previous_suggestions is None:
-        previous_suggestions = []
-
+def generate_commit_message(branch, files, changes_text, predominant_file_type, model):
     approaches = [
         lambda: generate_ml_based_message(branch, files, changes_text, predominant_file_type, model),
         lambda: generate_file_type_message(files, predominant_file_type),
@@ -201,15 +197,36 @@ def generate_commit_message(branch, files, changes_text, predominant_file_type, 
         lambda: generate_descriptive_message(changes_text, files, predominant_file_type),
         lambda: generate_action_message(changes_text, files)
     ]
-
-    actual_index = suggestion_index % len(approaches)
-    message = approaches[actual_index]()
-
-    if message in previous_suggestions and len(previous_suggestions) < len(approaches):
-        return generate_commit_message(branch, files, changes_text, predominant_file_type, 
-                                      model, suggestion_index + 1, previous_suggestions)
     
-    return message
+    previous_suggestions = []
+    suggestion_index = 0
+    
+    while True:
+        actual_index = suggestion_index % len(approaches)
+        message = approaches[actual_index]()
+        
+        if message in previous_suggestions and len(previous_suggestions) < len(approaches):
+            suggestion_index += 1
+            continue
+            
+        previous_suggestions.append(message)
+        
+        print(f"\n💡 Sugerencia de commit #{suggestion_index + 1}:\n→ {message}")
+        
+        confirm = input("\n¿Deseas usar este mensaje? (S/s), (O/o) para otra opción o enter para ingresar tu commit: ")
+        if confirm.lower() == 's':
+            run_git_command(["git", "commit", "-m", message])
+            print("✅ Commit realizado con éxito.")
+            return message
+        elif confirm.lower() == 'o':
+            print("\n🔁 Generando otra opción...")
+            suggestion_index += 1
+            continue
+        else:
+            custom_message = input('Ingresa tu commit: ')
+            run_git_command(["git", "commit", "-m", custom_message])
+            print("✅ Commit realizado con éxito.")
+            return custom_message
 
 def generate_ml_based_message(branch, files, changes_text, predominant_file_type, model):
     if len(changes_text) < 10:
@@ -342,131 +359,154 @@ def generate_action_message(changes_text, files):
     most_common_component = Counter(components).most_common(1)[0][0] if components else "componente"
     return f"{verb} {most_common_component} en {os.path.basename(files[0]) if files else 'proyecto'}"
 
-def commit_suggestion(branch, files):
-    model = load_or_train_model()
-    
+def handle_files_selection(files, message):
     if not files:
-        return "chore: general maintenance"
+        return []
     
-    changes_text, predominant_file_type = analyze_changes(files)
-    previous_suggestions = []
-    suggestion_index = 0
+    print(f"\n{message}")
+    for idx, file_path in enumerate(files):
+        print(f" [{idx}] {file_path}")
     
+    selection = input(
+        "Ingresa los números (ej: 0,2,4)\n"
+        "'t' para todos\n"
+        "'n' para ninguno\n"
+        "Opción: "
+    ).strip().lower()
+    
+    if selection == 't':
+        return files
+    elif selection == 'n':
+        return []
+    else:
+        try:
+            selected_indices = [int(i) for i in selection.split(',')]
+            return [
+                files[i] 
+                for i in selected_indices 
+                if 0 <= i < len(files)
+            ]
+        except ValueError:
+            print("⚠️ Entrada inválida. Usando ninguno.")
+            return []
+
+def prompt_testing_notes():
+    print("\n¿Deseas agregar información para la sección de 'Consideraciones para Testing'? (s/n): ", end='')
+    if input().strip().lower() == 's':
+        print("Escribe lo que desees agregar (finaliza con Enter):")
+        return input().strip()
+    return 'N/A'
+
+def prompt_compatible_apps():
+    apps = []
+    
+    print("\n# Aplicaciones compatibles")
+    print("| Aplicación  | Versión |")
+    print("|-------------|---------|")
+    
+    app_count = 1
     while True:
-        message = generate_commit_message(branch, files, changes_text, predominant_file_type,
-                                         model, suggestion_index, previous_suggestions)
-        
-        previous_suggestions.append(message)
-        
-        print(f"\n💡 Sugerencia de commit #{suggestion_index + 1}:\n→ {message}")
-        
-        confirm = input("\n¿Deseas usar este mensaje? (S/s), (O/o) para otra opción o enter para ingresar tu commit: ")
-        if confirm.lower() == 's':
-            run_git_command(["git", "commit", "-m", message])
-            print("✅ Commit realizado con éxito.")
-            return message
-        elif confirm.lower() == 'o':
-            print("\n🔁 Generando otra opción...")
-            suggestion_index += 1
-            continue
-        else:
-            custom_message = input('Ingresa tu commit: ')
-            run_git_command(["git", "commit", "-m", custom_message])
-            print("✅ Commit realizado con éxito.")
-            return custom_message
+        app_name = input(f"Nombre de la App {app_count} (deja vacío para terminar): ").strip()
+        if not app_name:
+            break
+            
+        version = input(f"Versión para {app_name}: ").strip()
+        apps.append((app_name, version))
+        app_count += 1
+    
+    table_lines = [
+        "| Aplicación  | Versión |",
+        "|-------------|---------|"
+    ]
+    
+    for app, version in apps:
+        table_lines.append(f"| {app.ljust(11)} | {version.ljust(7)} |")
+    
+    return '\n'.join(table_lines)
 
-def create_markdown_file(branch_name, all_files, commit_msg):
-    content = f"""
-# Descripcion
+def generate_pr_template(branch_name, all_files, commit_msg):
+    db_files = [f for f in all_files if f.lower().endswith('.sql')]
+    
+    testing_notes = prompt_testing_notes()
+    compatible_apps = prompt_compatible_apps()
 
-Cambios relacionados con la rama: `{branch_name}`  
-`{commit_msg or 'Sin mensaje'}`
+    content = f"""## Descripción
+
+**Rama:** `{branch_name}`  
+**Commit:** `{commit_msg or 'Sin mensaje'}`
+
+## Configuraciones
+{"**Se modificaron estos archivos SQL:**\n" + "\n".join(f"- {f}" for f in db_files) if db_files else "No hay cambios en base de datos"}
+
+## Archivos Modificados
 """
-    content += """ 
+    
+    file_types = {
+        'SQL': [f for f in all_files if f.lower().endswith('.sql')],
+        'Código': [f for f in all_files if f.lower().endswith(('.py', '.js', '.java', '.cpp', '.c', '.h', '.ts'))],
+        'Documentación': [f for f in all_files if f.lower().endswith(('.md', '.txt', '.rst'))],
+        'Otros': [f for f in all_files if not f.lower().endswith(('.sql', '.py', '.js', '.java', '.cpp', '.c', '.h', '.ts', '.md', '.txt', '.rst'))]
+    }
 
-# Configuracion
+    for category, files in file_types.items():
+        if files:
+            content += f"\n### {category}\n" + "\n".join(f"- {f}" for f in files) + "\n"
 
-# Consideraciones testing
+    content += f"""
+## Consideraciones para Testing
+{testing_notes}
 
-# Aplicaciones compatibles
-
-| Aplicación  | Versión | 
-|-------------|---------|
-| App 1       | v7.     |
-
-# Documentos
-
+## Aplicaciones Compatibles
+{compatible_apps}
 """
 
-    for file in all_files:
-        content += f"- {file}\n"
-
-    content += "\n# Bugs\n"
-
-    with open("PR_suggest.md", "w", encoding="utf-8") as PR_suggest:
-        PR_suggest.write(content)
+    with open("PR_suggest.md", "w", encoding="utf-8") as f:
+        f.write(content.strip())
+    
+    print(f"\n✅ Archivo PR_suggest.md generado con {len(all_files)} archivos listados")
+    print(f"📌 Archivos SQL incluidos: {len(db_files)}")
 
 def main():
     print_ascii_logo()
     
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    print(f"\n📂 Directorio de trabajo: {os.getcwd()}")
+    
     branch_name = create_branch()
-    status = git_status_info()
-
-    print("🚫 Unstaged files:")
-    for f in status["unstaged"]:
-        print(" -", f)
-
-    print("\n✅ Staged files:")
-    for f in status["staged"]:
-        print(" +", f)
-
-    print("\n❓ Untracked files:")
-    for f in status["untracked"]:
-        print(" ?", f)
+    
+    sql_files = detect_files_by_extension('.sql')
+    if sql_files:
+        print("\n🔍 Archivos SQL encontrados:")
+        for sql_file in sql_files:
+            print(f" - {sql_file}")
         
+        proceed = input("\n¿Agregar archivos SQL? (S/s): ").lower() == 's'
+        if proceed:
+            added = add_files(sql_files)
+            print(f"✅ {added}/{len(sql_files)} archivos SQL agregados")
+    
+    status = git_status_info()
+    print("\n📊 Estado actual del repositorio:")
+    print(f"- Staged: {len(status['staged'])} archivos")
+    print(f"- Unstaged: {len(status['unstaged'])} archivos")
+    print(f"- Untracked: {len(status['untracked'])} archivos")
+    
     if status['unstaged']:
-        print("Archivos unstaged disponibles:")
-        for idx, file in enumerate(status['unstaged']):
-        
-            display_path = file if not file.startswith("Thesis/") else file[len("Thesis/"):]
-            print(f" [{idx}] {display_path}")
-        
-        selection = input("Ingresa los números de los archivos que deseas agregar (ej: 0,2,4) o 't' para todos o 'n' para ninguno: ")
-        
-        if selection.lower() == 't':
-            add_info(status['unstaged'])
-        elif selection.lower() == 'n':
-            pass
-        else:
-            try:
-                index = [int(i.strip()) for i in selection.split(',')]
-                selected_files = [status['unstaged'][i] for i in index if 0 <= i < len(status['unstaged'])]
-                add_info(selected_files)
-            except Exception as e:
-                print(f"⚠️ Error en la selección: {e}")
-
-    status = git_status_info()
-
+        selected_unstaged = handle_files_selection(
+            status['unstaged'], 
+            "Archivos con cambios sin agregar (unstaged):"
+        )
+        if selected_unstaged:
+            add_files(selected_unstaged)
+    
     if status['untracked']:
-        print("Archivos untracked disponibles")
-        for idx, file in enumerate(status['untracked']):
-            print(f" [{idx}] {file}")
-            
-        selection = input("Ingresa los números de los archivos que deseas agregar (ej: 0,2,4) o 't' para todos o 'n' para ninguno: ")
-        
-        if selection.lower() == "t":
-            add_info(status['untracked'])
-        elif selection.lower() == "n":
-            pass
-        else:
-            try:
-                index = [int(i.strip()) for i in selection.split(',')]
-                selected_files = [status['untracked'][i] for i in index if 0 <= i < len(status['untracked'])]
-                add_info(selected_files)
-            except Exception as e: 
-                print(f"⚠️ Error en la selección: {e}")
-
-        # Actualizar el estado final antes de hacer commit
+        selected_untracked = handle_files_selection(
+            status['untracked'],
+            "Archivos sin seguimiento (untracked):"
+        )
+        if selected_untracked:
+            add_files(selected_untracked)
+    
     status = git_status_info()
     all_files = status["staged"]
 
@@ -474,27 +514,18 @@ def main():
         print("\nArchivos preparados para commit:")
         for f in all_files:
             print(" +", f)
-            
-        # Verificación adicional
-        if not all_files:
-            print("\n⚠️ Advertencia: No se detectaron archivos staged aunque se intentó agregarlos")
-            print("Posibles causas:")
-            print("1. Los archivos ya estaban en el repositorio sin cambios")
-            print("2. Problemas con las rutas de los archivos")
-            print("3. Los archivos están siendo ignorados por .gitignore")
-            print("\nEjecuta 'git status' manualmente para ver el estado real")
         
-        commit_msg = commit_suggestion(branch_name, all_files)
+        model = load_or_train_model()
+        changes_text, predominant_file_type = analyze_changes(all_files)
+        commit_msg = generate_commit_message(branch_name, all_files, changes_text, predominant_file_type, model)
     else:
-        print("\nNo hay archivos preparados para commit:")
-        print(" - Verifica que hayas agregado los archivos correctamente")
-        print(" - Usa 'git status' para ver el estado actual")
-        print(" - Revisa si los archivos tienen cambios reales para commit")
+        print("\nNo hay archivos preparados para commit")
         commit_msg = None
-        
-    create_markdown_file(branch_name, all_files, commit_msg)
+    
+    if commit_msg:
+        generate_pr_template(branch_name, all_files, commit_msg)
+    
+    print("\n¡Proceso completado con éxito!")
 
 if __name__ == "__main__":
     main()
-    
-    
