@@ -425,7 +425,6 @@ def prompt_compatible_apps():
     """Solicita aplicaciones compatibles y sus versiones, devuelve una tabla Markdown"""
     apps = []
     
-    print("\n# Aplicaciones compatibles")
     print("| Aplicación  | Versión |")
     print("|-------------|---------|")
     
