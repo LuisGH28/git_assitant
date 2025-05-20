@@ -1,16 +1,19 @@
 from setuptools import setup, find_packages
 
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
+
 setup(
     name="ai-git-assistant",
     version="0.1.0",
     author="Luis Gonzalez",
     author_email="luisgnzhdz@gmail.com",
-    description="Asistente inteligente para atuomatizar tareas de Git y GitHub",
-    long_description=open("README.md").read(),
+    description="Asistente inteligente para automatizar tareas de Git y GitHub",
+    long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/LuisGH28/git_assitant",
+    url="https://github.com/LuisGH28/git_assistant",  # Corregido
     packages=find_packages(),
-    include_package_data=True,
+    include_package_data=True,  # Importante para incluir model.pkl
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
@@ -24,8 +27,15 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "ai-git-assistant=git_assistant.__main__:main",
+            "ai-git-assistant=ai_git_assistant.__main__:main",  # Coherente con nombre de paquete
         ],
     },
+    extras_require={
+        "dev": [
+            "pytest>=7.0",
+            "pytest-cov>=3.0",
+            "pytest-mock>=3.0",
+            "black>=22.0",
+        ]
+    }
 )
-

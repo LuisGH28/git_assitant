@@ -39,23 +39,18 @@ TYPES = {
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model.pkl')
 
 def run_git_command(args):
-    """Ejecuta un comando git y devuelve las líneas de salida"""
     result = subprocess.run(args, capture_output=True, text=True)
     return result.stdout.strip().splitlines() if result.stdout.strip() else []
 
 def resolve_file_path(file_path):
-    """Resuelve la ruta correcta del archivo"""
-    # Verificar la ruta directa
     if os.path.exists(file_path):
         return os.path.abspath(file_path)
     
-    # Verificar ruta con el directorio del script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     possible_path = os.path.join(script_dir, file_path)
     if os.path.exists(possible_path):
         return possible_path
     
-    # Verificar solo con el nombre del archivo
     basename = os.path.basename(file_path)
     if os.path.exists(basename):
         return os.path.abspath(basename)
@@ -63,7 +58,6 @@ def resolve_file_path(file_path):
     return None
 
 def git_status_info():
-    """Obtiene el estado de git con rutas normalizadas"""
     def get_files(command):
         try:
             result = subprocess.run(command, capture_output=True, text=True, check=True)
@@ -78,7 +72,6 @@ def git_status_info():
     }
 
 def create_branch():
-    """Crea una nueva rama o muestra la actual"""
     new_branch = input('¿Quieres crear una nueva rama? (S/s): ')
     if new_branch.lower() == 's':
         name = input('Ingresa el nombre de tu nueva rama: ')
@@ -90,7 +83,6 @@ def create_branch():
         return current_branch[0]
 
 def add_files(files):
-    """Agrega archivos a git de manera robusta"""
     if not files:
         print("No hay archivos para agregar.")
         return 0
@@ -112,13 +104,11 @@ def add_files(files):
     return success
 
 def detect_files_by_extension(extension):
-    """Detecta archivos con una extensión específica"""
     status = git_status_info()
     all_files = status["staged"] + status["unstaged"] + status["untracked"]
     return [f for f in all_files if f and f.lower().endswith(extension)]
 
 def get_file_diff(file_path):
-    """Obtiene el diff de un archivo"""
     try:
         result = subprocess.run(["git", "diff", "--cached", file_path], 
                               capture_output=True, text=True)
@@ -127,7 +117,6 @@ def get_file_diff(file_path):
         return ""
 
 def extract_changes(diff_text):
-    """Extrae líneas relevantes de un diff"""
     relevant_lines = []
     for line in diff_text.split('\n'):
         if line.startswith('+') and not line.startswith('+++'):
@@ -135,7 +124,6 @@ def extract_changes(diff_text):
     return ' '.join(relevant_lines)
 
 def train_model():
-    """Entrena el modelo de aprendizaje automático para clasificación de commits"""
     X = []
     y = []
     
@@ -161,7 +149,6 @@ def train_model():
     return pipeline
 
 def load_or_train_model():
-    """Carga el modelo existente o entrena uno nuevo"""
     if os.path.exists(MODEL_PATH):
         try:
             return joblib.load(MODEL_PATH)
@@ -173,7 +160,6 @@ def load_or_train_model():
         return train_model()
 
 def get_file_type(file_path):
-    """Determina el tipo de archivo basado en su extensión"""
     _, ext = os.path.splitext(file_path)
     ext = ext.lower()
     
@@ -191,7 +177,6 @@ def get_file_type(file_path):
         return 'other'
 
 def analyze_changes(files):
-    """Analiza los cambios en los archivos para generar un mensaje de commit"""
     changes_text = ""
     file_types = Counter()
     
@@ -205,7 +190,6 @@ def analyze_changes(files):
     return changes_text.strip(), predominant_type
 
 def generate_commit_message(branch, files, changes_text, predominant_file_type, model):
-    """Genera un mensaje de commit basado en diferentes estrategias"""
     approaches = [
         lambda: generate_ml_based_message(branch, files, changes_text, predominant_file_type, model),
         lambda: generate_file_type_message(files, predominant_file_type),
@@ -214,7 +198,6 @@ def generate_commit_message(branch, files, changes_text, predominant_file_type, 
         lambda: generate_action_message(changes_text, files)
     ]
     
-    # Generar y rastrear sugerencias únicas
     previous_suggestions = []
     suggestion_index = 0
     
@@ -246,7 +229,6 @@ def generate_commit_message(branch, files, changes_text, predominant_file_type, 
             return custom_message
 
 def generate_ml_based_message(branch, files, changes_text, predominant_file_type, model):
-    """Genera un mensaje de commit basado en machine learning"""
     if len(changes_text) < 10:
         branch_lower = branch.lower()
         commit_type = 'chore'
@@ -282,7 +264,6 @@ def generate_ml_based_message(branch, files, changes_text, predominant_file_type
             return f"{predicted_type}: actualización de {filename}"
 
 def generate_file_type_message(files, predominant_file_type):
-    """Genera un mensaje de commit basado en el tipo de archivos"""
     type_to_commit = {
         'code': 'feat',
         'docs': 'docs',
@@ -306,7 +287,6 @@ def generate_file_type_message(files, predominant_file_type):
             return f"{commit_type}: actualización de múltiples archivos ({num_files})"
 
 def generate_thematic_message(changes_text, files):
-    """Genera un mensaje de commit temático basado en palabras comunes"""
     words = re.findall(r'\b\w+\b', changes_text.lower())
     common_stop_words = ['the', 'a', 'an', 'in', 'to', 'of', 'and', 'or', 'for', 'with', 'on', 'at']
     filtered_words = [w for w in words if w not in common_stop_words and len(w) > 3]
@@ -329,7 +309,6 @@ def generate_thematic_message(changes_text, files):
     return f"{commit_type}: mejoras en {os.path.basename(files[0]) if files else 'proyecto'}"
 
 def generate_descriptive_message(changes_text, files, predominant_file_type):
-    """Genera un mensaje de commit descriptivo basado en la acción detectada"""
     action_words = {
         'add': ['agregar', 'añadir', 'crear', 'implementar', 'nuevo'],
         'fix': ['arreglar', 'corregir', 'solucionar', 'reparar'],
@@ -368,7 +347,6 @@ def generate_descriptive_message(changes_text, files, predominant_file_type):
     return f"{commit_type}: {action} {context} en {os.path.basename(files[0]) if files else 'proyecto'}"
 
 def generate_action_message(changes_text, files):
-    """Genera un mensaje de commit basado en la acción y el componente"""
     verbs = ['actualiza', 'mejora', 'modifica', 'optimiza', 'implementa', 'refactoriza']
     verb = random.choice(verbs)
     
@@ -382,7 +360,6 @@ def generate_action_message(changes_text, files):
     return f"{verb} {most_common_component} en {os.path.basename(files[0]) if files else 'proyecto'}"
 
 def handle_files_selection(files, message):
-    """Maneja la selección de archivos de una lista"""
     if not files:
         return []
     
@@ -414,7 +391,6 @@ def handle_files_selection(files, message):
             return []
 
 def prompt_testing_notes():
-    """Solicita notas para testing"""
     print("\n¿Deseas agregar información para la sección de 'Consideraciones para Testing'? (s/n): ", end='')
     if input().strip().lower() == 's':
         print("Escribe lo que desees agregar (finaliza con Enter):")
@@ -422,13 +398,12 @@ def prompt_testing_notes():
     return 'N/A'
 
 def prompt_compatible_apps():
-    """Solicita aplicaciones compatibles y sus versiones, devuelve una tabla Markdown"""
     apps = []
     
+    print("\n# Aplicaciones compatibles")
     print("| Aplicación  | Versión |")
     print("|-------------|---------|")
     
-    # Añadir primera aplicación
     app_count = 1
     while True:
         app_name = input(f"Nombre de la App {app_count} (deja vacío para terminar): ").strip()
@@ -439,9 +414,7 @@ def prompt_compatible_apps():
         apps.append((app_name, version))
         app_count += 1
     
-    # Generar la tabla
     table_lines = [
-        "# Aplicaciones compatibles",
         "| Aplicación  | Versión |",
         "|-------------|---------|"
     ]
@@ -452,15 +425,11 @@ def prompt_compatible_apps():
     return '\n'.join(table_lines)
 
 def generate_pr_template(branch_name, all_files, commit_msg):
-    """Genera un template para pull request"""
-    # Detectar archivos SQL
     db_files = [f for f in all_files if f.lower().endswith('.sql')]
     
-    # Obtener información adicional
     testing_notes = prompt_testing_notes()
     compatible_apps = prompt_compatible_apps()
 
-    # Construir contenido del template
     content = f"""## Descripción
 
 **Rama:** `{branch_name}`  
@@ -472,7 +441,6 @@ def generate_pr_template(branch_name, all_files, commit_msg):
 ## Archivos Modificados
 """
     
-    # Agrupar archivos por tipo
     file_types = {
         'SQL': [f for f in all_files if f.lower().endswith('.sql')],
         'Código': [f for f in all_files if f.lower().endswith(('.py', '.js', '.java', '.cpp', '.c', '.h', '.ts'))],
@@ -480,12 +448,10 @@ def generate_pr_template(branch_name, all_files, commit_msg):
         'Otros': [f for f in all_files if not f.lower().endswith(('.sql', '.py', '.js', '.java', '.cpp', '.c', '.h', '.ts', '.md', '.txt', '.rst'))]
     }
 
-    # Añadir archivos agrupados al contenido
     for category, files in file_types.items():
         if files:
             content += f"\n### {category}\n" + "\n".join(f"- {f}" for f in files) + "\n"
 
-    # Añadir secciones adicionales
     content += f"""
 ## Consideraciones para Testing
 {testing_notes}
@@ -503,14 +469,11 @@ def generate_pr_template(branch_name, all_files, commit_msg):
 def main():
     print_ascii_logo()
     
-    # Establecer directorio de trabajo
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     print(f"\n📂 Directorio de trabajo: {os.getcwd()}")
     
-    # Paso 1: Crear rama
     branch_name = create_branch()
     
-    # Paso 2: Procesar archivos SQL primero (prioridad)
     sql_files = detect_files_by_extension('.sql')
     if sql_files:
         print("\n🔍 Archivos SQL encontrados:")
@@ -522,14 +485,12 @@ def main():
             added = add_files(sql_files)
             print(f"✅ {added}/{len(sql_files)} archivos SQL agregados")
     
-    # Paso 3: Mostrar estado del repositorio
     status = git_status_info()
     print("\n📊 Estado actual del repositorio:")
     print(f"- Staged: {len(status['staged'])} archivos")
     print(f"- Unstaged: {len(status['unstaged'])} archivos")
     print(f"- Untracked: {len(status['untracked'])} archivos")
     
-    # Paso 4: Manejar archivos unstaged
     if status['unstaged']:
         selected_unstaged = handle_files_selection(
             status['unstaged'], 
@@ -538,7 +499,6 @@ def main():
         if selected_unstaged:
             add_files(selected_unstaged)
     
-    # Paso 5: Manejar archivos untracked
     if status['untracked']:
         selected_untracked = handle_files_selection(
             status['untracked'],
@@ -547,7 +507,6 @@ def main():
         if selected_untracked:
             add_files(selected_untracked)
     
-    # Paso 6: Actualizar estado y preparar commit
     status = git_status_info()
     all_files = status["staged"]
 
@@ -556,7 +515,6 @@ def main():
         for f in all_files:
             print(" +", f)
         
-        # Cargar modelo y generar mensaje de commit
         model = load_or_train_model()
         changes_text, predominant_file_type = analyze_changes(all_files)
         commit_msg = generate_commit_message(branch_name, all_files, changes_text, predominant_file_type, model)
@@ -564,7 +522,6 @@ def main():
         print("\nNo hay archivos preparados para commit")
         commit_msg = None
     
-    # Paso 7: Generar template de PR si hubo commits
     if commit_msg:
         generate_pr_template(branch_name, all_files, commit_msg)
     

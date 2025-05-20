@@ -2,7 +2,7 @@ Metadata-Version: 2.4
 Name: ai-git-assistant
 Version: 0.1.0
 Summary: Asistente inteligente para atuomatizar tareas de Git y GitHub
-Home-page: https://github.com/LuisGH28/git_assitant
+Home-page: https://github.com/LuisGH28/git_assistant
 Author: Luis Gonzalez
 Author-email: Luis Gonzalez <luisgnzhdz@gmail.com>
 License-Expression: MIT
@@ -19,6 +19,7 @@ Dynamic: author
 Dynamic: home-page
 Dynamic: license-file
 Dynamic: requires-python
+
 
 # 🤖 GitGPT - Intelligent Commit Assistant
 
@@ -58,15 +59,13 @@ pip install -r requirements.txt
 
 ---
 
-
-
 ## 🛠 Installation
 
-Clone the repository and copy `git_gpt.py` into the project repository you're working on:
+Clone the repository and copy `git_assistan` into the project repository you're working on:
 
 ```
-git clone https://github.com/yourusername/gitgpt.git
-cd gitgpt
+https://github.com/LuisGH28/git_assitant.git
+cd git_assitant
 ```
 
 Then run the assistant:
@@ -77,8 +76,6 @@ python3 git_gpt.py
 ```
 
 ---
-
-
 
 ## 🧠 How It Works
 
@@ -121,8 +118,6 @@ Do you want to use this message? (Y/y), (N/n) for another option, or press enter
 
 ---
 
-
-
 ## 🧪 Model Training
 
 The ML model is based on Naive Bayes with TF-IDF vectorization. You can retrain it manually if desired:
@@ -135,11 +130,8 @@ python3 -c "import gitgpt; gitgpt.train_model()"
 This will generate the `gitgpt_model.pkl` file.
 
 > The model is automatically trained if it doesn't exist or is corrupted.
->
 
 ---
-
-
 
 ## 📁 Project Structure
 
@@ -155,15 +147,11 @@ This will generate the `gitgpt_model.pkl` file.
 
 ---
 
-
-
 ## 🤝 Contributing
 
 Contributions are welcome! Feel free to open an issue or a pull request with improvements, new strategies, or enhancements to the model.
 
 ---
-
-
 
 ## 📄 License
 
@@ -171,15 +159,11 @@ This project is licensed under the MIT License. Use it, modify it, and contribut
 
 ---
 
-
-
 ## 🧑‍💻 Author
 
 Created with ❤️ by [Luigi](https://github.com/LuisGH28)
 
 ---
-
-
 
 ## 🌟 Like this project?
 

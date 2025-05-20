@@ -1,1 +1,2 @@
-git_assistant
+ai_git_assistant
+tests
