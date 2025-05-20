@@ -45,6 +45,7 @@ pip install .
 
 ---
 
+<<<<<<< HEAD
 ## 🏗️ Estructura del proyecto
 
 ```
@@ -55,6 +56,88 @@ ai-git-assistant/
 tests/
 ├── tests_cli.py           # Tests de interfaz
 └── tests_git_utils.py     # Tests de funcionalidad Git
+=======
+## 🛠 Instalación
+
+Clona el repositorio y agrega el archivo git_assistant a tu repositorio en el que estas trabajando
+
+```
+https://github.com/LuisGH28/git_assitant.git
+cd git_assitant
+```
+
+Luego ejecuta el asistente
+
+```
+python3 git_gpt.py
+```
+
+---
+
+## 🧠 Cómo funciona
+
+1. Detecta los archivos modificados en el repositorio usando `git status`.
+2. Clasifica los archivos por tipo (documentación, código, pruebas, etc.).
+3. Extrae las diferencias (`git diff`) y palabras clave.
+4. Genera varias sugerencias de commit usando diferentes enfoques.
+5. Permite seleccionar la sugerencia que más se ajuste o escribir una personalizada.
+6. Crea un archivo .md de sugerencia para un posible PR
+
+---
+
+## 💬 Ejemplo de uso
+
+$ ./gitgpt.py
+
+¿Quieres crear una nueva rama? (S/s): n
+ℹ️ Continuarás trabajando en la rama actual: fix/login-issue
+
+Agregando archivos:
+
++ login.py
+  Archivos agregados exitosamente.
+
+💡 Sugerencias de commit #1:
+
+fix: solucionado error en login.py
+
+¿Deseas usar este mensaje? (S/s), (O/o) para otra opcion o enter para ingresar tu propio commit: o
+
+💡 Sugerencias de commit #2:
+
+ fix(login): corrección de error en autenticación
+
+¿Deseas usar este mensaje? (S/s), (O/o) para otra opcion o enter para ingresar tu propio commit: s
+
+✅ Commit realizado con éxito.
+
+---
+
+## 🧪 Entrenamiento del Modelo
+
+El modelo de ML está basado en Naive Bayes con vectorización TF-IDF. Puedes entrenarlo tú mismo si lo deseas:
+
+```
+python3 -c "import gitgpt; gitgpt.train_model()"
+
+```
+
+Esto generará el archivo `gitgpt_model.pkl`.
+
+> El modelo también se entrena automáticamente si no existe o si está dañado.
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+├── README.md
+├── README.es.md
+└── git_assistant
+    ├── git_gpt.py
+    ├── gitgpt_model.pkl
+    └── requirements.txt
+>>>>>>> 42c9f6a2e09320e2a599f6881b8dad5ace57232c
 
 ```
 
