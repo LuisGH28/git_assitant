@@ -397,6 +397,13 @@ def prompt_testing_notes():
         return input().strip()
     return 'N/A'
 
+def prompt_bugs():
+    print("\n¿Deseas agregar información sobre bugs? (s/n): ", end='')
+    if input().strip().lower() == 's':
+        print("Escribe lo que desees agregar (finaliza con Enter):")
+        return input().strip()
+    return 'N/A'
+
 def prompt_compatible_apps():
     apps = []
     
@@ -429,6 +436,7 @@ def generate_pr_template(branch_name, all_files, commit_msg):
     
     testing_notes = prompt_testing_notes()
     compatible_apps = prompt_compatible_apps()
+    bugs = prompt_bugs()
 
     content = f"""## Descripción
 
@@ -453,8 +461,6 @@ def generate_pr_template(branch_name, all_files, commit_msg):
             content += f"\n### {category}\n" + "\n".join(f"- {f}" for f in files) + "\n"
 
     content += f"""
-## Consideraciones para Testing
-{testing_notes}
 
 ## Aplicaciones Compatibles
 {compatible_apps}
@@ -462,6 +468,14 @@ def generate_pr_template(branch_name, all_files, commit_msg):
 
     with open("PR_suggest.md", "w", encoding="utf-8") as f:
         f.write(content.strip())
+        content += f"""
+        
+## Consideraciones para Testing
+{testing_notes}
+
+## Bugs
+{bugs}
+"""
     
     print(f"\n✅ Archivo PR_suggest.md generado con {len(all_files)} archivos listados")
     print(f"📌 Archivos SQL incluidos: {len(db_files)}")
