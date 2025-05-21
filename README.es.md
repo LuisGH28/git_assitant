@@ -1,69 +1,60 @@
-# README.es.md
+# 🤖 GitGPT - Asistente Inteligente de Commits
+
+📄 Este README también está disponible en: [English](README.md)
+
+GitGPT es una herramienta inteligente que sugiere automáticamente **mensajes de commit** y también proporciona una **plantilla básica para pull requests**, combinando heurísticas, estructura del proyecto y un modelo de Machine Learning. Es perfecto para desarrolladores que quieren mantener sus commits consistentes y claros sin perder tiempo.
 
 ---
 
+## 🚀 Características principales
 
-
-# AI Git Assistant 🤖📦
-
-[![PyPI version](https://img.shields.io/pypi/v/ai-git-assistant)](https://pypi.org/project/ai-git-assistant/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-Asistente inteligente para Git que automatiza la creación de commits semánticos y genera plantillas para Pull Requests, con soporte para análisis de cambios y sugerencias basadas en IA.
-
-## ✨ Características principales
-
-- 🧠 **Sugerencias de commits inteligentes** usando ML (Naive Bayes + TF-IDF)
-- 📝 **Generación automática de mensajes** con múltiples enfoques:
-  - Basado en tipo de archivo
-  - Basado en cambios realizados
-  - Basado en temática del código
-- 🔍 **Detección automática** de archivos modificados (staged/unstaged/untracked)
-- 📊 **Análisis de cambios** por tipo de archivo (código, docs, tests, etc.)
-- 📑 **Plantilla de PR** con:
-  - Listado organizado de archivos modificados
-  - Sección para consideraciones de testing
-  - Tabla de aplicaciones compatibles
-- 🛠️ **Soporte para SQL** con detección especial de archivos .sql
-- 🌍 **Interfaz en español** (fácil de internacionalizar)
+- Detecta cambios en archivos **staged**, **unstaged** y **untracked**.
+- Sugiere mensajes de commit basados en:
+  - El contenido del diff (`git diff`)
+  - El nombre de la rama actual
+  - El tipo de archivo (código, documentación, estilo, test, etc.)
+  - Un modelo de **Machine Learning** entrenado con ejemplos comunes.
+- Soporta múltiples enfoques para sugerencias de mensajes:
+  - 🔬 Modelo ML
+  - ⚙️ Enfoque heurístico
+  - 🎯 Enfoque temático
+  - 🔍 Enfoque descriptivo
+- Opción para crear una nueva rama antes de hacer commit.
+- Interfaz de línea de comandos limpia y fácil de usar.
 
 ---
 
-## 📦 Instalación
+## 📌 Requisitos
+
+- Python 3.7 o superior
+- Git instalado y configurado
+- Dependencias de Python (instalar vía pip):
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🛠 Instalación
+
+Clona el repositorio y copia `git_assistant` en el repositorio del proyecto en el que estás trabajando:
+
+```
+https://github.com/LuisGH28/git_assitant.git
+cd git_assitant
+```
+
+Luego ejecuta el asistente:
+
+```
+python3 git_gpt.py
+```
+
+También puedes instalar desde PyPI:
 
 ```bash
 pip install ai-git-assistant
-```
-
-O instala desde el código fuente:
-
-```bash
-https://github.com/LuisGH28/git_assitant.git
-cd git_assitant
-pip install .
-```
-
----
-
-## 🏗️ Estructura del proyecto
-
-```
-ai-git-assistant/
-├── __init__.py
-├── __main__.py            # Lógica principal
-├── requirements.txt       # Dependencias
-tests/
-├── tests_cli.py           # Tests de interfaz
-└── tests_git_utils.py     # Tests de funcionalidad Git
-```
-## 🛠 Instalación
-
-Clona el repositorio y agrega el archivo git_assistant a tu repositorio en el que estas trabajando
-
-```
-https://github.com/LuisGH28/git_assitant.git
-cd git_assitant
-pip install .
 ```
 
 ---
@@ -71,24 +62,67 @@ pip install .
 ## 📁 Estructura del Proyecto
 
 ```
-ai-git-assistant/
-├── __init__.py
-├── __main__.py            # Lógica principal
-├── requirements.txt       # Dependencias
-tests/
-├── tests_cli.py           # Tests de interfaz
-└── tests_git_utils.py     # Tests de funcionalidad Git
-
+├── README.md
+├── README.es.md
+└── git_assistant
+    ├── git_gpt.py
+    ├── gitgpt_model.pkl
+    └── requirements.txt
 ```
+
 ---
 
-## 📌 Requisitos
+## 🧠 Cómo funciona
 
-* Python 3.8+
-* Git instalado y configurado
-* Dependencias:
-  * scikit-learn
-  * joblib
+1. Detecta archivos modificados en el repositorio usando `git status`.
+2. Clasifica los archivos por tipo (documentación, código, tests, etc.).
+3. Extrae diffs (`git diff`) y palabras clave relevantes.
+4. Genera varias sugerencias de commit usando diferentes estrategias.
+5. Permite seleccionar el mensaje más adecuado o escribir uno propio.
+6. Crea un archivo `.md` con una plantilla básica de sugerencia para PR.
+
+---
+
+## 💬 Ejemplo
+
+```
+$ ./gitgpt.py
+
+¿Deseas crear una nueva rama? (Y/y): n
+ℹ️ Continuarás trabajando en la rama actual: fix/login-issue
+
+Agregando archivos:
++ login.py
+Archivos agregados correctamente.
+
+💡 Sugerencia de commit #1:
+
+fix: problema resuelto en login.py
+
+¿Usar este mensaje? (Y/y), (N/n) para otra opción, o presiona enter para escribir tu propio mensaje: n
+
+💡 Sugerencia de commit #2:
+
+fix(login): error de autenticación corregido
+
+¿Usar este mensaje? (Y/y), (N/n) para otra opción, o presiona enter para escribir tu propio mensaje: y
+
+✅ Commit creado correctamente.
+```
+
+---
+
+## 🧪 Entrenamiento del modelo
+
+El modelo ML está basado en Naive Bayes con vectorización TF-IDF. Puedes reentrenarlo manualmente si lo deseas:
+
+```
+python3 -c "import gitgpt; gitgpt.train_model()"
+```
+
+Esto generará el archivo `gitgpt_model.pkl`.
+
+> El modelo se entrena automáticamente si no existe o está corrupto.
 
 ---
 
@@ -96,38 +130,45 @@ tests/
 
 1. Clona el repositorio
 2. Crea un entorno virtual:
+
 ```
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
 
-4. Instala dependencias:
+3. Instala dependencias:
 
 ```
 pip install -e ".[dev]"
 ```
-
 
 4. Ejecuta tests:
 
 ```
 pytest
 ```
----
-
-## 🤖 Roadmap
-
-* Soporte para más lenguajes (i18n)
-* Integración con APIs de GitHub/GitLab
-* Modo no-interactivo para CI/CD
-* Plugin para editores (VSCode, PyCharm)
 
 ---
 
-## 🎉 ¡Disponible en PyPI!
+## 🤝 Contribuciones
 
+¡Las contribuciones son bienvenidas! No dudes en abrir un issue o un pull request con mejoras, nuevas estrategias o mejoras al modelo.
 
-```
-pip install ai-git-assistant
-```
+---
+
+## 📄 Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT. Úsalo, modifícalo y contribuye libremente.
+
+---
+
+## 🧑‍💻 Autor
+
+Creado con ❤️ por [Luigi](https://github.com/LuisGH28)
+
+---
+
+## 🌟 ¿Te gusta este proyecto?
+
+Dale una ⭐ en GitHub y compártelo con tu equipo!

@@ -1,42 +1,60 @@
-# AI Git Assistant 🤖📦
-
-[![PyPI version](https://img.shields.io/pypi/v/ai-git-assistant)](https://pypi.org/project/ai-git-assistant/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://file+.vscode-resource.vscode-cdn.net/Users/macbook/Documents/gitAssistant/LICENSE)
+# 🤖 GitGPT - Intelligent Commit Assistant
 
 📄 This README is also available in: [Español](README.es.md)
 
-Intelligent Git assistant that automates semantic commit creation and generates Pull Request templates, with support for change analysis and AI-based suggestions.
-
-## ✨ Key Features
-
-- 🧠 **Smart commit suggestions** using ML (Naive Bayes + TF-IDF)
-- 📝 **Automatic message generation** with multiple approaches:
-  - File type-based
-  - Change-based
-  - Code theme-based
-- 🔍 **Automatic detection** of modified files (staged/unstaged/untracked)
-- 📊 **Change analysis** by file type (code, docs, tests, etc.)
-- 📑 **PR template** with:
-  - Organized list of modified files
-  - Testing considerations section
-  - Compatible applications table
-- 🛠️ **SQL support** with special .sql file detection
-- 🌍 **Spanish interface** (easy to internationalize)
+GitGPT is an intelligent tool that automatically suggests **commit messages**, and also provides a basic **pull request template**, combining heuristics, project structure, and a Machine Learning model. It's perfect for developers who want to keep their commits consistent and clear without wasting time.
 
 ---
 
-## 📦 Installation
+## 🚀 Features
+
+- Detects changes in **staged**, **unstaged**, and **untracked** files.
+- Suggests commit messages based on:
+  - The diff content (`git diff`)
+  - The current branch name
+  - The file type (code, documentation, style, test, etc.)
+  - A **Machine Learning** model trained with common examples.
+- Supports multiple approaches for message suggestions:
+  - 🔬 ML Model
+  - ⚙️ Heuristic approach
+  - 🎯 Thematic approach
+  - 🔍 Descriptive approach
+- Option to create a new branch before committing.
+- Clean and easy-to-use CLI interface.
+
+---
+
+## 📦 Requirements
+
+- Python 3.7 or higher
+- Git installed and configured
+- Python dependencies (install via pip):
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## 🛠 Installation
+
+Clone the repository and copy `git_assistant` into the project repository you're working on:
+
+```
+https://github.com/LuisGH28/git_assitant.git
+cd git_assitant
+```
+
+Then run the assistant:
+
+```
+python3 git_gpt.py
+```
+
+You can also install from PyPI:
 
 ```bash
 pip install ai-git-assistant
-```
-
-Or install from source:
-
-```bash
-https://github.com/LuisGH28/git_assitant.git
-cd git_assitant
-pip install .
 ```
 
 ---
@@ -44,25 +62,70 @@ pip install .
 ## 🏗️ Project Structure
 
 ```
-ai-git-assistant/
-├── __init__.py
-├── __main__.py            # Main logic
-├── requirements.txt       # Dependencies
-tests/
-├── tests_cli.py           # Interface tests
-└── tests_git_utils.py     # Git functionality tests
+├── README.md
+├── README.es.md
+└── git_assistant
+    ├── git_gpt.py
+    ├── gitgpt_model.pkl
+    └── requirements.txt
 ```
----
-
-## 📌 Requirements
-
-* Python 3.8+
-* Git installed and configured
-* Dependencies:
-  * scikit-learn
-  * joblib
 
 ---
+
+## 🧠 How It Works
+
+1. Detects modified files in the repository using `git status`.
+2. Classifies the files by type (documentation, code, tests, etc.).
+3. Extracts diffs (`git diff`) and relevant keywords.
+4. Generates several commit suggestions using different strategies.
+5. Allows you to select the most suitable message or write your own.
+6. Creates a `.md` file with a basic PR suggestion template.
+
+---
+
+## 💬 Example
+
+```
+$ ./gitgpt.py
+
+Do you want to create a new branch? (Y/y): n
+ℹ️ You will continue working on the current branch: fix/login-issue
+
+Adding files:
++ login.py
+Files added successfully.
+
+💡 Commit suggestion #1:
+
+fix: fixed issue in login.py
+
+Do you want to use this message? (Y/y), (N/n) for another option, or press enter to write your own: n
+
+💡 Commit suggestion #2:
+
+fix(login): authentication error corrected
+
+Do you want to use this message? (Y/y), (N/n) for another option, or press enter to write your own: y
+
+✅ Commit successfully created.
+```
+
+---
+
+## 🧪 Model Training
+
+The ML model is based on Naive Bayes with TF-IDF vectorization. You can retrain it manually if desired:
+
+```
+python3 -c "import gitgpt; gitgpt.train_model()"
+```
+
+This will generate the `gitgpt_model.pkl` file.
+
+> The model is automatically trained if it doesn't exist or is corrupted.
+
+---
+
 ## 🛠️ Development
 
 1. Clone the repository
@@ -73,6 +136,7 @@ python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
+
 3. Install dependencies:
 
 ```
@@ -80,22 +144,31 @@ pip install -e ".[dev]"
 ```
 
 4. Run tests:
+
 ```
 pytest
 ```
----
-
-## 🤖 Roadmap
-
-* Support for more languages (i18n)
-* Integration with GitHub/GitLab APIs
-* Non-interactive mode for CI/CD
-* Editor plugins (VSCode, PyCharm)
 
 ---
 
-## 🎉 Available on PyPI!
+## 🤝 Contributing
 
-```
-pip install ai-git-assistant
-```
+Contributions are welcome! Feel free to open an issue or a pull request with improvements, new strategies, or enhancements to the model.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. Use it, modify it, and contribute freely!
+
+---
+
+## 🧑‍💻 Author
+
+Created with ❤️ by [Luigi](https://github.com/LuisGH28)
+
+---
+
+## 🌟 Like this project?
+
+Give it a ⭐ on GitHub and share it with your team!
