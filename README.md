@@ -41,7 +41,6 @@ pip install .
 
 ---
 
-<<<<<<< HEAD
 ## 🏗️ Project Structure
 
 ```
@@ -52,26 +51,7 @@ ai-git-assistant/
 tests/
 ├── tests_cli.py           # Interface tests
 └── tests_git_utils.py     # Git functionality tests
-=======
-
-
-## 🛠 Installation
-
-Clone the repository and copy `git_assistan` into the project repository you're working on:
-
 ```
-https://github.com/LuisGH28/git_assitant.git
-cd git_assitant
-```
-
-Then run the assistant:
-
-```
-python3 git_gpt.py
->>>>>>> 42c9f6a2e09320e2a599f6881b8dad5ace57232c
-
-```
-
 ---
 
 ## 📌 Requirements
@@ -83,7 +63,6 @@ python3 git_gpt.py
   * joblib
 
 ---
-
 ## 🛠️ Development
 
 1. Clone the repository
@@ -94,7 +73,6 @@ python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
-
 3. Install dependencies:
 
 ```
@@ -102,11 +80,9 @@ pip install -e ".[dev]"
 ```
 
 4. Run tests:
-
 ```
 pytest
 ```
-
 ---
 
 ## 🤖 Roadmap
