@@ -75,7 +75,7 @@ def create_branch():
     new_branch = input('¿Quieres crear una nueva rama? (S/s): ')
     if new_branch.lower() == 's':
         name = input('Ingresa el nombre de tu nueva rama: ')
-        subprocess.run(["git", "checkout", "-b", name], check=True)
+        result = subprocess.run(["git", "checkout", "-b", name])
         return name
     else:
         current_branch = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
