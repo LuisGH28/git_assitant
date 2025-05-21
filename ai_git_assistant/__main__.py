@@ -474,7 +474,7 @@ def generate_pr_template(branch_name, all_files, commit_msg):
 
     with open("PR_suggest.md", "w", encoding="utf-8") as f:
         f.write(content.strip())
-        content += f
+        
     
     print(f"\n✅ Archivo PR_suggest.md generado con {len(all_files)} archivos listados")
     print(f"📌 Archivos SQL incluidos: {len(db_files)}")
