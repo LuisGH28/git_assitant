@@ -71,7 +71,7 @@ pip install .
 
 Demo animado
 
-![demo](assets/ai-git-assistan.git)
+![demo](assets/ai-git-assistan.gif)
 
 Resultado de la sugerencia del PR
 
