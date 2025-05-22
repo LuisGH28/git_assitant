@@ -46,7 +46,7 @@ pip install .
 
 Animated Demo
 
-![demo](assets/ai-git-assistan.git)
+![demo](assets/ai-git-assistan.gif)
 
 Result of the suggestion for the PR
 
