@@ -9,6 +9,7 @@ import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
+from pathlib import Path  
 
 def print_ascii_logo():
     print(r"""
@@ -37,6 +38,17 @@ TYPES = {
 }
 
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model.pkl')
+
+def find_git_root():
+    try:
+        git_root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+        return Path(git_root)
+    except subprocess.CalledProcessError:
+        return None
 
 def run_git_command(args):
     result = subprocess.run(args, capture_output=True, text=True)
@@ -480,9 +492,16 @@ def generate_pr_template(branch_name, all_files, commit_msg):
     print(f"📌 Archivos SQL incluidos: {len(db_files)}")
 
 def main():
+    
+    git_root = find_git_root()
+    if not git_root:
+        print("❌ Error: No estás dentro de un repositorio Git.")
+        return
+    
     print_ascii_logo()
     
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(git_root)
+    print(f"✅ Repositorio encontrado en: {git_root}")
     print(f"\n📂 Directorio de trabajo: {os.getcwd()}")
     
     branch_name = create_branch()

@@ -11,5 +11,6 @@ ai_git_assistant.egg-info/entry_points.txt
 ai_git_assistant.egg-info/requires.txt
 ai_git_assistant.egg-info/top_level.txt
 tests/__init__.py
+tests/test_git_detection.py
 tests/tests_cli.py
 tests/tests_git_utils.py

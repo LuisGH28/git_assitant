@@ -5,15 +5,15 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setup(
     name="ai-git-assistant",
-    version="1.0.0",
+    version="1.0.5",
     author="Luis Gonzalez",
     author_email="luisgnzhdz@gmail.com",
     description="Asistente inteligente para automatizar tareas de Git y GitHub",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/LuisGH28/git_assistant",  # Corregido
+    url="https://github.com/LuisGH28/git_assistant",  
     packages=find_packages(),
-    include_package_data=True,  # Importante para incluir model.pkl
+    include_package_data=True,  
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
@@ -27,7 +27,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "ai-git-assistant=ai_git_assistant.__main__:main",  # Coherente con nombre de paquete
+            "ai-git-assistant=ai_git_assistant.__main__:main",  
         ],
     },
     extras_require={

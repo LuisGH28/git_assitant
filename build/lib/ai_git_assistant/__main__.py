@@ -9,6 +9,7 @@ import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
+from pathlib import Path  
 
 def print_ascii_logo():
     print(r"""
@@ -37,6 +38,17 @@ TYPES = {
 }
 
 MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'model.pkl')
+
+def find_git_root():
+    try:
+        git_root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+        return Path(git_root)
+    except subprocess.CalledProcessError:
+        return None
 
 def run_git_command(args):
     result = subprocess.run(args, capture_output=True, text=True)
@@ -75,7 +87,7 @@ def create_branch():
     new_branch = input('¿Quieres crear una nueva rama? (S/s): ')
     if new_branch.lower() == 's':
         name = input('Ingresa el nombre de tu nueva rama: ')
-        subprocess.run(["git", "checkout", "-b", name], check=True)
+        result = subprocess.run(["git", "checkout", "-b", name])
         return name
     else:
         current_branch = run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
@@ -397,6 +409,13 @@ def prompt_testing_notes():
         return input().strip()
     return 'N/A'
 
+def prompt_bugs():
+    print("\n¿Deseas agregar información sobre bugs? (s/n): ", end='')
+    if input().strip().lower() == 's':
+        print("Escribe lo que desees agregar (finaliza con Enter):")
+        return input().strip()
+    return 'N/A'
+
 def prompt_compatible_apps():
     apps = []
     
@@ -429,6 +448,7 @@ def generate_pr_template(branch_name, all_files, commit_msg):
     
     testing_notes = prompt_testing_notes()
     compatible_apps = prompt_compatible_apps()
+    bugs = prompt_bugs()
 
     content = f"""## Descripción
 
@@ -453,23 +473,35 @@ def generate_pr_template(branch_name, all_files, commit_msg):
             content += f"\n### {category}\n" + "\n".join(f"- {f}" for f in files) + "\n"
 
     content += f"""
-## Consideraciones para Testing
-{testing_notes}
 
 ## Aplicaciones Compatibles
 {compatible_apps}
+        
+## Consideraciones para Testing
+{testing_notes}
+
+## Bugs
+{bugs}
 """
 
     with open("PR_suggest.md", "w", encoding="utf-8") as f:
         f.write(content.strip())
+        
     
     print(f"\n✅ Archivo PR_suggest.md generado con {len(all_files)} archivos listados")
     print(f"📌 Archivos SQL incluidos: {len(db_files)}")
 
 def main():
+    
+    git_root = find_git_root()
+    if not git_root:
+        print("❌ Error: No estás dentro de un repositorio Git.")
+        return
+    
     print_ascii_logo()
     
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(git_root)
+    print(f"✅ Repositorio encontrado en: {git_root}")
     print(f"\n📂 Directorio de trabajo: {os.getcwd()}")
     
     branch_name = create_branch()

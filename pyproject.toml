@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai-git-assistant"
-version = "1.0.0"
+version = "1.0.5"
 authors = [
     {name = "Luis Gonzalez", email = "luisgnzhdz@gmail.com"},
 ]
@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-ai-git-assistant = "git_assistant.__main__:main"
+ai-git-assistant = "ai_git_assistant.__main__:main"
 
 [project.urls]
 "Homepage" = "https://github.com/LuisGH28/git_assitant"
