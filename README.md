@@ -123,3 +123,67 @@ pytest
 ```
 pip install ai-git-assistant
 ```
+
+```mermaid
+
+flowchart LR
+  %% Niveles principales
+  subgraph CLI["CLI (entrypoint __main__)"]
+    run["ai-git-assistant (comando)"]
+    args["Args & Config (flags/env)"]
+    run --> args
+  end
+
+  subgraph Core["Core / Orquestador"]
+    detector["Detector de cambios<br/>(staged/unstaged/untracked)"]
+    analyzer["Analizador de cambios<br/>(code/docs/tests/sql)"]
+    strategies["Estrategias de mensajes"]
+    prgen["Generador de Plantilla PR"]
+    i18n["i18n (ES-ready)"]
+  end
+
+  subgraph ML["ML"]
+    tfidf["TF-IDF Vectorizer"]
+    nb["Naive Bayes<br/>(joblib model)"]
+    tfidf --> nb
+  end
+
+  subgraph GitLayer["Capa Git / FS"]
+    gitops["Operaciones Git<br/>(diff, status, files)"]
+    fs["FileSystem utils"]
+    sqlflag["Detector .sql<br/>(reglas especiales)"]
+  end
+
+  subgraph Output["Salidas"]
+    commitMsg["Mensaje de commit<br/>(sugerido/auto)"]
+    prTemplate["Plantilla de Pull Request"]
+  end
+
+  %% Flujos
+  run --> detector
+  args --> Core
+  detector --> gitops
+  gitops --> analyzer
+  analyzer --> strategies
+  analyzer --> sqlflag
+  strategies --> nb
+  strategies --> commitMsg
+  nb --> commitMsg
+  tfidf --> strategies
+
+  analyzer --> prgen
+  i18n --> strategies
+  i18n --> prgen
+
+  prgen --> prTemplate
+  fs --> analyzer
+
+  %% Estrategias internas
+  subgraph STRAT["Estrategias de generación"]
+    ftype["Por tipo de archivo"]
+    change["Por cambios (diff)"]
+    theme["Por tema de código"]
+  end
+  strategies --- STRAT
+  STRAT --> commitMsg
+
